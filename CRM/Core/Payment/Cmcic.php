@@ -117,6 +117,14 @@ class CRM_Core_Payment_Cmcic extends CRM_Core_Payment{
 
     $relayUrl = $this->prepareHostedCheckout($params, $returnOKURL, $cancelURL, $merchantRef);
 
+    if (self::isDrupalWebformAjaxRequest() && class_exists('\\Drupal\\webform\\Ajax\\WebformRefreshCommand')) {
+      $webformRedirect = new \Drupal\webform\Ajax\WebformRefreshCommand($relayUrl);
+      CRM_Core_Page_AJAX::returnJsonResponse(array(
+        $webformRedirect->render(),
+      ));
+      exit;
+    }
+
     if (self::isDrupalAjaxRequest()) {
       $commands = array(
         array(
@@ -136,7 +144,18 @@ class CRM_Core_Payment_Cmcic extends CRM_Core_Payment{
    * @return bool
    */
   public static function isDrupalAjaxRequest(): bool {
-    return !empty($_REQUEST['ajax_form']) || (isset($_REQUEST['_wrapper_format']) && $_REQUEST['_wrapper_format'] === 'drupal_ajax');
+    return self::isDrupalWebformAjaxRequest()
+      || !empty($_REQUEST['ajax_form'])
+      || (isset($_REQUEST['_wrapper_format']) && $_REQUEST['_wrapper_format'] === 'drupal_ajax');
+  }
+
+  /**
+   * Check whether the request is a Drupal Webform AJAX submission.
+   *
+   * @return bool
+   */
+  public static function isDrupalWebformAjaxRequest(): bool {
+    return !empty($_REQUEST['_drupal_ajax']);
   }
 
   /**
