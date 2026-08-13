@@ -32,6 +32,34 @@ Then in CiviCRM, configure the Payment Processor:
 
 Note that the TPE key/sha1/site code are identical for the dev and production configurations. Only the URL differs.
 
+### Experimental Hosted Fields checkout
+
+Monetico Hosted Fields can be selected for every supported CiviCRM payment
+entry point (contribution/event QuickForm, Drupal Webform and Afform Checkout):
+
+```bash
+cv api4 Setting.set '{"values":{"cmcic_checkout_mode":"hosted_fields"}}'
+cv flush
+```
+
+Return to the existing hosted payment page with:
+
+```bash
+cv api4 Setting.set '{"values":{"cmcic_checkout_mode":"hosted_page"}}'
+cv flush
+```
+
+The TPE must have Monetico's tokenisation / Hosted Fields capability enabled.
+The flow signs the token and PaymentService requests server-side, persists the
+short-lived attempt independently from the browser cookie, and handles the
+3-D Secure technical and cardholder-authentication steps before completing the
+CiviCRM contribution.
+
+For a first sandbox test, use an accepted test card such as
+`0000010000000021` (Visa without 3-D Secure enrolment), an expiry date in the
+future and a three-digit CVX. The sandbox `...0023` card exercises the
+frictionless 3-D Secure path and `...0025` exercises the challenge path.
+
 ## Server notification URL ("interface Retour" / CGI2)
 
 The Monetico merchant support must be contacted to configure this URL. It is separate from the browser return URLs sent by CiviCRM.
