@@ -25,4 +25,14 @@ final class CmcicRefundGuardTest extends TestCase {
     $params = ['contribution_id' => 123, 'amount' => 10.0];
     $processor->doRefund($params);
   }
+
+  public function testFormatsSettlementDateForRecreditApi(): void {
+    $processor = $this->getMockBuilder(CRM_Core_Payment_Cmcic::class)
+      ->disableOriginalConstructor()
+      ->getMock();
+    $method = new ReflectionMethod(CRM_Core_Payment_Cmcic::class, 'formatSettlementDate');
+
+    self::assertSame('10/08/2026', $method->invoke($processor, '2026-08-10'));
+    self::assertSame('10/08/2026', $method->invoke($processor, '10/08/2026'));
+  }
 }

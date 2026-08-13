@@ -152,6 +152,18 @@ class CRM_Core_Payment_CmcicIPN {
     $numauto = (string) $this->retrieve('numauto', 'String', FALSE);
     $trxn_id = $contributionID . '-' . $numauto;
 
+    if (!$this->isKnownResultCode($resultCode)) {
+      \Civi::log()->error("Monetico IPN received an unknown code-retour '{$resultCode}' for contribution #{$contributionID}.");
+      $this->cmcic_receipt_exit(FALSE);
+      return FALSE;
+    }
+
+    if ($resultCode === 'payetest' && empty($paymentProcessor['is_test'])) {
+      \Civi::log()->error("Monetico production IPN received sandbox code payetest for contribution #{$contributionID}.");
+      $this->cmcic_receipt_exit(FALSE);
+      return FALSE;
+    }
+
     // Fetch existing contribution status, trxn_id and financial details to guarantee idempotency, status safety and amount validation
     $contribution = \Civi\Api4\Contribution::get(FALSE)
       ->addSelect('contribution_status_id:name', 'total_amount', 'currency', 'trxn_id')
@@ -237,7 +249,22 @@ class CRM_Core_Payment_CmcicIPN {
       $this->processFailedTransaction($contributionID, $currentStatus);
       $this->cmcic_receipt_exit(TRUE);
     }
+
+    // attente_partenaire is a valid signed Monetico notification. Keep the
+    // contribution pending, but acknowledge it so Monetico does not retry it.
+    if ($resultCode === 'attente_partenaire') {
+      \Civi::log()->info("Monetico IPN is awaiting partner validation for contribution #{$contributionID}.");
+      $this->cmcic_receipt_exit(TRUE);
+    }
+
     return TRUE;
+  }
+
+  /**
+   * Accept only result codes documented for the immediate-payment flow.
+   */
+  protected function isKnownResultCode($resultCode) {
+    return in_array($resultCode, array('payetest', 'paiement', 'Annulation', 'attente_partenaire'), TRUE);
   }
 
   /**
