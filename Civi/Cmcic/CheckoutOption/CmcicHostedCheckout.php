@@ -24,16 +24,16 @@ if (interface_exists('Civi\Checkout\CheckoutOptionInterface') && interface_exist
     }
 
     public function getLabel(): string {
-      return (string) ($this->getConnectionDetails(FALSE)['title'] ?? 'Monetico');
+      return (string) ($this->getDisplayConnection()['title'] ?? 'Monetico');
     }
 
     public function getFrontendLabel(): string {
-      $connection = $this->getConnectionDetails(FALSE);
+      $connection = $this->getDisplayConnection();
       return (string) ($connection['frontend_title'] ?? $connection['title'] ?? 'Monetico');
     }
 
     public function getPaymentMethod(): ?string {
-      $connection = $this->liveConnection ?: $this->testConnection;
+      $connection = $this->getDisplayConnection();
       if (empty($connection['payment_instrument_id'])) {
         return NULL;
       }
@@ -49,7 +49,7 @@ if (interface_exists('Civi\Checkout\CheckoutOptionInterface') && interface_exist
     }
 
     public function getPaymentProcessorId(): ?int {
-      $connection = $this->liveConnection ?: $this->testConnection;
+      $connection = $this->getDisplayConnection();
       return !empty($connection['id']) ? (int) $connection['id'] : NULL;
     }
 
@@ -68,14 +68,10 @@ if (interface_exists('Civi\Checkout\CheckoutOptionInterface') && interface_exist
     }
 
     public function startCheckout(CheckoutSession $session): void {
-      $connection = $this->getConnectionDetails($session->isTestMode());
-      $processor = \Civi\Payment\System::singleton()->getByName(
-        $connection['name'],
-        $session->isTestMode()
-      );
-      $session->setCheckoutParam('cmcic_return', 'ok');
+      $processor = $this->getProcessor($session);
+      $session->setCheckoutParam('cmcic_return', 'success');
       $successURL = $session->getLandingUrl();
-      $session->setCheckoutParam('cmcic_return', 'err');
+      $session->setCheckoutParam('cmcic_return', 'cancel');
       $failureURL = $session->getLandingUrl();
       $session->setCheckoutParam('cmcic_return', NULL);
       $session->setResponseItem('redirect', $processor->startHostedCheckoutForContribution(
@@ -87,16 +83,13 @@ if (interface_exists('Civi\Checkout\CheckoutOptionInterface') && interface_exist
 
     public function continueCheckout(CheckoutSession $session): void {
       try {
-        $connection = $this->getConnectionDetails($session->isTestMode());
-        $processor = \Civi\Payment\System::singleton()->getByName(
-          $connection['name'],
-          $session->isTestMode()
-        );
+        $processor = $this->getProcessor($session);
         $checkoutStatus = $processor->synchronizeHostedCheckoutContribution($session->getContributionId());
       }
       catch (\Throwable $e) {
         \Civi::log()->warning('Unable to retrieve the Monetico payment status: ' . $e->getMessage());
-        $session->pending();
+        // Do not overwrite the restored pending session while an IPN may be
+        // completing the contribution in another request.
         return;
       }
 
@@ -112,10 +105,10 @@ if (interface_exists('Civi\Checkout\CheckoutOptionInterface') && interface_exist
         $session->fail();
         return;
       }
-      if ($session->getCheckoutParam('cmcic_return') === 'err') {
-        // The signed return token came from url_retour_err. A bank state of PA
-        // still wins above; otherwise the customer has abandoned or refused it.
-        $processor->cancelHostedCheckoutContribution($session->getContributionId());
+      if ($session->getCheckoutParam('cmcic_return') === 'cancel') {
+        // The browser return is only UI state. Keep the contribution Pending
+        // until the Monetico IPN or a later EtatPaiement reconciliation decides
+        // its accounting status.
         $session->cancel();
         return;
       }
@@ -129,6 +122,26 @@ if (interface_exists('Civi\Checkout\CheckoutOptionInterface') && interface_exist
         throw new \CRM_Core_Exception(ts('No active Monetico payment processor is available for this mode.'));
       }
       return $connection;
+    }
+
+    protected function getDisplayConnection(): array {
+      $connection = $this->liveConnection ?: $this->testConnection;
+      if (!$connection) {
+        throw new \CRM_Core_Exception(ts('No active Monetico payment processor is available.'));
+      }
+      return $connection;
+    }
+
+    protected function getProcessor(CheckoutSession $session): \CRM_Core_Payment_Cmcic {
+      $connection = $this->getConnectionDetails($session->isTestMode());
+      $processor = \Civi\Payment\System::singleton()->getByName(
+        (string) $connection['name'],
+        $session->isTestMode()
+      );
+      if (!$processor instanceof \CRM_Core_Payment_Cmcic) {
+        throw new \CRM_Core_Exception(ts('Unable to load the Monetico payment processor.'));
+      }
+      return $processor;
     }
 
   }
