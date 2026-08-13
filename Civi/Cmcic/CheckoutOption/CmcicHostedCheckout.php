@@ -33,7 +33,19 @@ if (interface_exists('Civi\Checkout\CheckoutOptionInterface') && interface_exist
     }
 
     public function getPaymentMethod(): ?string {
-      return NULL;
+      $connection = $this->liveConnection ?: $this->testConnection;
+      if (empty($connection['payment_instrument_id'])) {
+        return NULL;
+      }
+
+      $instrument = \Civi\Api4\OptionValue::get(FALSE)
+        ->addSelect('name')
+        ->addWhere('option_group_id:name', '=', 'payment_instrument')
+        ->addWhere('value', '=', (int) $connection['payment_instrument_id'])
+        ->execute()
+        ->first();
+
+      return !empty($instrument['name']) ? (string) $instrument['name'] : NULL;
     }
 
     public function getPaymentProcessorId(): ?int {
