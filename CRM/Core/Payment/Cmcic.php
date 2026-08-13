@@ -574,12 +574,19 @@ class CRM_Core_Payment_Cmcic extends CRM_Core_Payment{
       ));
     }
 
+    $capture = $processor->findRefundCapture(
+      $statusResult['captures'] ?? array(),
+      $requestedRefundAmount,
+      $soldeRemboursable
+    );
+
     $refundResult = $processor->callMoneticoRecreditApi(
       $contributionID,
       $requestedRefundAmount,
       $orderCurrency,
       $soldeRemboursable,
-      date('d/m/Y', $receiveDate ?: time())
+      date('d/m/Y', $receiveDate ?: time()),
+      $capture
     );
 
     \Civi::log()->info(sprintf(
@@ -605,6 +612,8 @@ class CRM_Core_Payment_Cmcic extends CRM_Core_Payment{
    * @param string $currency
    * @param float $soldeRemboursable
    * @param string $dateCommande
+   * @param array|null $capture A single successful Monetico capture, when
+   *   EtatPaiement provides the authorization and settlement date.
    * @return array
    * @throws CRM_Core_Exception
    */
@@ -613,7 +622,8 @@ class CRM_Core_Payment_Cmcic extends CRM_Core_Payment{
     float $refundAmount,
     string $currency,
     float $soldeRemboursable,
-    string $dateCommande
+    string $dateCommande,
+    $capture = NULL
   ): array {
     $contribution = \Civi\Api4\Contribution::get(FALSE)
       ->addSelect('total_amount')
@@ -638,6 +648,11 @@ class CRM_Core_Payment_Cmcic extends CRM_Core_Payment{
       'lgue' => 'FR',
       'societe' => (string) $this->_paymentProcessor['signature'],
     );
+
+    if ($capture !== NULL) {
+      $fields['date_remise'] = $this->formatSettlementDate((string) $capture['date_remise']);
+      $fields['num_autorisation'] = $capture['authorization_number'];
+    }
 
     $fields['MAC'] = CRM_Core_Payment_CmcicHmac::calculate(
       $fields,
@@ -684,7 +699,7 @@ class CRM_Core_Payment_Cmcic extends CRM_Core_Payment{
       $errorDescriptions = array(
         '-46' => 'La commande est déjà entièrement recréditée.',
         '-48' => 'Échec du recrédit (recrédit partiel non permis ou rejeté par la banque).',
-        '-51' => 'Le recrédit global n\'est pas permis pour cette commande.',
+        '-51' => 'Le recrédit global n\'est pas permis pour cette commande. Les données de recouvrement (date_remise et num_autorisation) sont nécessaires.',
         '-52' => 'Le montant déjà recrédité est incorrect.',
       );
       $errorMsg = $errorDescriptions[$cdr] ?? ("Code d'erreur Monetico: cdr=" . $cdr);
@@ -696,6 +711,56 @@ class CRM_Core_Payment_Cmcic extends CRM_Core_Payment{
       'refund_trxn_id' => 'recredit-' . $contributionID . '-' . time(),
       'response' => $parsed,
     );
+  }
+
+  /**
+   * Select a capture-specific refund only when EtatPaiement identifies one
+   * complete capture that covers the refundable balance. Otherwise retain the
+   * documented global card-refund path.
+   *
+   * @param array $captures
+   * @return array|null
+   */
+  protected function findRefundCapture($captures, $refundAmount, $refundableBalance) {
+    if (!is_array($captures) || count($captures) !== 1) {
+      return NULL;
+    }
+
+    $capture = reset($captures);
+    $captureAmount = (float) ($capture['amount'] ?? 0);
+    $captureRecredits = (float) ($capture['recredits_total'] ?? 0);
+    $captureBalance = max(0.0, $captureAmount - $captureRecredits);
+    $dateRemise = (string) ($capture['date_remise'] ?? '');
+    $authorizationNumber = (string) ($capture['authorization_number'] ?? '');
+
+    if (
+      $dateRemise === ''
+      || $authorizationNumber === ''
+      || abs($captureBalance - (float) $refundableBalance) >= 0.01
+      || (float) $refundAmount > ($captureBalance + 0.001)
+    ) {
+      return NULL;
+    }
+
+    return $capture;
+  }
+
+  /**
+   * EtatPaiement returns a capture settlement date as YYYY-MM-DD, while the
+   * recredit API requires DD/MM/YYYY.
+   */
+  protected function formatSettlementDate($dateRemise) {
+    $date = \DateTimeImmutable::createFromFormat('!Y-m-d', $dateRemise);
+    if ($date && $date->format('Y-m-d') === $dateRemise) {
+      return $date->format('d/m/Y');
+    }
+
+    $date = \DateTimeImmutable::createFromFormat('!d/m/Y', $dateRemise);
+    if ($date && $date->format('d/m/Y') === $dateRemise) {
+      return $dateRemise;
+    }
+
+    throw new CRM_Core_Exception('Monetico EtatPaiement returned an invalid capture settlement date.');
   }
 
   /**

@@ -97,13 +97,39 @@ class CRM_Core_Payment_CmcicPaymentStatus {
       $capturedAmount = (float) preg_replace('/[^0-9\.]/', '', (string) $xml->montantrecouvre);
     }
 
+    $captures = array();
+    if (isset($xml->recouvrements->recouvrement)) {
+      foreach ($xml->recouvrements->recouvrement as $capture) {
+        if ((string) ($capture->resultat ?? '') !== '1') {
+          continue;
+        }
+
+        $captures[] = array(
+          'amount' => self::parseMoneticoAmount((string) ($capture->montant ?? '')),
+          'date_remise' => trim((string) ($capture->date_remise ?? '')),
+          'authorization_number' => trim((string) ($capture->numero_autorisation ?? '')),
+          'recredits_total' => self::parseMoneticoAmount((string) ($capture->recredits->total ?? '')),
+        );
+      }
+    }
+
     return array(
       'state' => (string) $xml->etat,
       'authorization_number' => (string) ($xml->numauto ?? ''),
       'recredits_total' => $recreditsTotal,
       'captured_amount' => $capturedAmount,
+      // Present for deferred, split, and recurring payments. Immediate card
+      // payments may only support Monetico's documented global refund path.
+      'captures' => $captures,
       'raw_xml' => $xml,
     );
+  }
+
+  /**
+   * Convert a Monetico amount such as "12.34EUR" to a decimal amount.
+   */
+  protected static function parseMoneticoAmount($amount) {
+    return (float) preg_replace('/[^0-9\.]/', '', (string) $amount);
   }
 
 }
