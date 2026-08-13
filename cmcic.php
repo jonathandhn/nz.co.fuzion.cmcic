@@ -47,7 +47,9 @@ function cmcic_supports_mjwshared(): bool {
 }
 
 /**
- * Publish one checkout option for each active test/live Monetico pair.
+ * Publish one checkout option for each active Monetico processor name. A test
+ * or live connection alone is enough; CheckoutSession selects the matching
+ * connection when that mode is used.
  *
  * @param object $event
  */
@@ -68,9 +70,6 @@ function cmcic_register_afform_checkout_options($event) {
   }
 
   foreach ($pairs as $name => $pair) {
-    if (empty($pair['live']) || empty($pair['test'])) {
-      continue;
-    }
     $event->options['cmcic_hosted_checkout_' . $name] = new Civi\Cmcic\CheckoutOption\CmcicHostedCheckout(
       $pair['live'] ?? NULL,
       $pair['test'] ?? NULL
