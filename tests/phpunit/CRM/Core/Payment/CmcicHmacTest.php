@@ -32,4 +32,14 @@ final class CmcicHmacTest extends TestCase {
       CRM_Core_Payment_CmcicHmac::calculate($fields, $binaryKey)
     );
   }
+
+  public function testSignsExactJsonBodyBytes(): void {
+    $body = "{\n  \"action\": \"InitializePaymentMean\"\n}";
+    $key = '00112233445566778899AABBCCDDEEFF00112233';
+
+    self::assertSame(
+      hash_hmac('sha1', $body, hex2bin($key)),
+      CRM_Core_Payment_CmcicHmac::calculateBody($body, $key)
+    );
+  }
 }
