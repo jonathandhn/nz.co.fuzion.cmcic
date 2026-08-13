@@ -115,7 +115,7 @@ class CRM_Core_Payment_Cmcic extends CRM_Core_Payment{
       $merchantRef = (string) $contributionID;
     }
 
-    $relayUrl = $this->prepareHostedCheckout($params, $returnOKURL, $cancelURL, $merchantRef);
+    $relayUrl = $this->prepareCheckout($params, $returnOKURL, $cancelURL, $merchantRef);
 
     if (self::isDrupalWebformAjaxRequest() && class_exists('\\Drupal\\webform\\Ajax\\WebformRefreshCommand')) {
       $webformRedirect = new \Drupal\webform\Ajax\WebformRefreshCommand($relayUrl);
@@ -136,6 +136,113 @@ class CRM_Core_Payment_Cmcic extends CRM_Core_Payment{
     }
 
     CRM_Utils_System::redirect($relayUrl);
+  }
+
+  /**
+   * Prepare the checkout selected for every CiviCRM form integration.
+   *
+   * @param array $params
+   * @param string $returnOKURL
+   * @param string $cancelURL
+   * @param string $merchantRef
+   * @param string|null $mode
+   *
+   * @return string
+   */
+  function prepareCheckout($params, $returnOKURL, $cancelURL, $merchantRef, $mode = NULL) {
+    $mode = $mode ?? CRM_Cmcic_CheckoutMode::getConfiguredMode();
+    CRM_Cmcic_CheckoutMode::assertImplemented($mode);
+
+    if ($mode === CRM_Cmcic_CheckoutMode::HOSTED_FIELDS) {
+      return $this->prepareHostedFieldsCheckout($params, $returnOKURL, $cancelURL);
+    }
+
+    return $this->prepareHostedCheckout($params, $returnOKURL, $cancelURL, $merchantRef);
+  }
+
+  /**
+   * Prepare the experimental Monetico Hosted Fields checkout.
+   */
+  function prepareHostedFieldsCheckout($params, $returnOKURL, $cancelURL) {
+    $contributionID = !empty($params['contributionID']) ? $params['contributionID'] : ($params['contribution_id'] ?? NULL);
+    if (!$contributionID) {
+      throw new CRM_Core_Exception(ts('Unable to prepare the payment reference.'));
+    }
+
+    $contextEncoded = CRM_Core_Payment_CmcicOrderContext::buildFromPaymentParams($params);
+    $context = json_decode(base64_decode($contextEncoded, TRUE), TRUE);
+    if (!is_array($context)) {
+      throw new CRM_Core_Exception(ts('Unable to prepare the Monetico order context.'));
+    }
+
+    $email = '';
+    foreach (array('email', 'email-Primary', 'email-5') as $emailField) {
+      if (!empty($params[$emailField])) {
+        $email = (string) $params[$emailField];
+        break;
+      }
+    }
+    $contactID = !empty($params['contactID']) ? $params['contactID'] : ($params['contact_id'] ?? NULL);
+    if (!$email && $contactID) {
+      $contactEmail = \Civi\Api4\Email::get(FALSE)
+        ->addSelect('email')
+        ->addWhere('contact_id', '=', $contactID)
+        ->addOrderBy('is_primary', 'DESC')
+        ->execute()
+        ->first();
+      $email = (string) ($contactEmail['email'] ?? '');
+    }
+    if (!$email) {
+      throw new CRM_Core_Exception(ts('An email address is required for Monetico Hosted Fields.'));
+    }
+
+    $attemptId = bin2hex(random_bytes(16));
+    $expires = time() + 3600;
+    $signedParams = array(
+      'attempt_id' => $attemptId,
+      'expires' => $expires,
+      'processor_id' => (int) $this->_paymentProcessor['id'],
+    );
+    $signer = new CRM_Utils_Signer(self::getHostedFieldsSigningKey(), array_keys($signedParams));
+    $signedParams['_sgn'] = $signer->sign($signedParams);
+    $hostedFieldsUrl = CRM_Utils_System::url(
+      'civicrm/cmcic/hosted-fields',
+      $signedParams,
+      TRUE,
+      NULL,
+      FALSE,
+      TRUE
+    );
+    $token = CRM_Core_Payment_CmcicHostedFieldsClient::initializePaymentMean($this);
+    CRM_Cmcic_HostedFieldsStore::set($attemptId, array(
+      'amount_minor' => (int) round((float) CRM_Utils_Rule::cleanMoney($params['amount'] ?? 0) * 100),
+      'cancel_url' => $cancelURL,
+      'context' => $context,
+      'contribution_id' => (int) $contributionID,
+      'currency' => strtoupper((string) ($params['currencyID'] ?? 'EUR')),
+      'email' => $email,
+      'expires' => $expires,
+      'hosted_fields_url' => $hostedFieldsUrl,
+      'payment_mean_token' => (string) $token['token'],
+      'point_of_sale' => (string) $this->_paymentProcessor['user_name'],
+      'processor_id' => (int) $this->_paymentProcessor['id'],
+      'return_url' => $returnOKURL,
+    ));
+
+    \Civi\Api4\Contribution::update(FALSE)
+      ->addWhere('id', '=', (int) $contributionID)
+      ->setValue('payment_processor_id', (int) $this->_paymentProcessor['id'])
+      ->execute();
+
+    return $hostedFieldsUrl;
+  }
+
+  public static function getHostedFieldsSigningKey(): string {
+    $siteKey = defined('CIVICRM_SITE_KEY') ? (string) constant('CIVICRM_SITE_KEY') : '';
+    if ($siteKey === '') {
+      throw new CRM_Core_Exception(ts('The CiviCRM site key is not configured.'));
+    }
+    return hash_hmac('sha256', 'cmcic-hosted-fields-v1', $siteKey);
   }
 
   /**
@@ -226,6 +333,25 @@ class CRM_Core_Payment_Cmcic extends CRM_Core_Payment{
    * @return string
    */
   function startHostedCheckoutForContribution($contributionID, $urls = [], $failureURL = NULL) {
+    return $this->startCheckoutForContribution(
+      $contributionID,
+      $urls,
+      $failureURL,
+      CRM_Cmcic_CheckoutMode::HOSTED_PAGE
+    );
+  }
+
+  /**
+   * Start the configured checkout for a contribution created by Checkout.
+   *
+   * @param int $contributionID
+   * @param array|string $urls
+   * @param string|null $failureURL
+   * @param string|null $mode
+   *
+   * @return string
+   */
+  function startCheckoutForContribution($contributionID, $urls = [], $failureURL = NULL, $mode = NULL) {
     if (is_string($urls)) {
       $urls = [
         'return_url' => $urls,
@@ -250,11 +376,12 @@ class CRM_Core_Payment_Cmcic extends CRM_Core_Payment{
     );
     $merchantRef = $params['contactID'] . '-' . $contributionID;
 
-    return $this->prepareHostedCheckout(
+    return $this->prepareCheckout(
       $params,
       $returnOKURL,
       $cancelURL,
-      $merchantRef
+      $merchantRef,
+      $mode
     );
   }
 

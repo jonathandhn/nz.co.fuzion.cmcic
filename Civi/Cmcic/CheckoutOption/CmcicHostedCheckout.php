@@ -74,7 +74,7 @@ if (interface_exists('Civi\Checkout\CheckoutOptionInterface') && interface_exist
       $session->setCheckoutParam('cmcic_return', 'cancel');
       $failureURL = $session->getLandingUrl();
       $session->setCheckoutParam('cmcic_return', NULL);
-      $session->setResponseItem('redirect', $processor->startHostedCheckoutForContribution(
+      $session->setResponseItem('redirect', $processor->startCheckoutForContribution(
         $session->getContributionId(),
         $successURL,
         $failureURL
@@ -98,6 +98,7 @@ if (interface_exists('Civi\Checkout\CheckoutOptionInterface') && interface_exist
         return;
       }
       if ($checkoutStatus === 'cancel') {
+        // Monetico confirmed the terminal bank state, so persist cancellation.
         $session->cancel();
         return;
       }
@@ -109,7 +110,9 @@ if (interface_exists('Civi\Checkout\CheckoutOptionInterface') && interface_exist
         // The browser return is only UI state. Keep the contribution Pending
         // until the Monetico IPN or a later EtatPaiement reconciliation decides
         // its accounting status.
-        $session->cancel();
+        // This is only the signed browser journey. Cancel the Afform UX while
+        // leaving the contribution Pending for IPN or EtatPaiement.
+        $session->setStatus(CheckoutSession::STATUS_CANCEL);
         return;
       }
 
