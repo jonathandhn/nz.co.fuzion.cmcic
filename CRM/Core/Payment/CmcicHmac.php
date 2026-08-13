@@ -24,6 +24,16 @@ class CRM_Core_Payment_CmcicHmac {
   }
 
   /**
+   * Calculate the MAC used by Monetico JSON APIs.
+   *
+   * The exact bytes sent as the HTTP body must be signed, including any
+   * whitespace. Callers must therefore send the same string unchanged.
+   */
+  public static function calculateBody(string $body, string $key, string $algorithm = 'sha1'): string {
+    return hash_hmac($algorithm, $body, self::ensureBinaryKey($key));
+  }
+
+  /**
    * Safely obtain the binary key, handling both pre-packed binary keys (from Cmcic::getKey())
    * and raw hexadecimal strings.
    */
