@@ -104,11 +104,20 @@ class CRM_Core_Payment_CmcicPaymentStatus {
           continue;
         }
 
+        $captureRecreditsTotal = 0.0;
+        if (isset($capture->recredits->recredit)) {
+          foreach ($capture->recredits->recredit as $recredit) {
+            $captureRecreditsTotal += self::parseMoneticoAmount(
+              (string) ($recredit->montant_recredite ?? '')
+            );
+          }
+        }
+
         $captures[] = array(
           'amount' => self::parseMoneticoAmount((string) ($capture->montant ?? '')),
           'date_remise' => trim((string) ($capture->date_remise ?? '')),
           'authorization_number' => trim((string) ($capture->numero_autorisation ?? '')),
-          'recredits_total' => self::parseMoneticoAmount((string) ($capture->recredits->total ?? '')),
+          'recredits_total' => $captureRecreditsTotal,
         );
       }
     }
