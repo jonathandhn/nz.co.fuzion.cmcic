@@ -153,21 +153,13 @@ class CRM_Core_Payment_CmcicOrderContext {
     $shoppingCartItems = [];
     $cartAmount = 0;
     foreach ($lineItems as $lineItem) {
-      $quantity = self::toQuantity($lineItem['qty'] ?? NULL);
-      $unitPrice = self::toMinorUnits(
-        (float) ($lineItem['unit_price'] ?? 0) + (float) ($lineItem['tax_amount'] ?? 0)
-      );
-      $name = self::getLineItemName($lineItem);
-      if ($quantity === NULL || $unitPrice === NULL || $unitPrice < 0 || !$name) {
+      $shoppingCartItem = self::buildShoppingCartItem($lineItem);
+      if ($shoppingCartItem === NULL) {
         return NULL;
       }
 
-      $shoppingCartItems[] = [
-        'name' => $name,
-        'unitPrice' => $unitPrice,
-        'quantity' => $quantity,
-      ];
-      $cartAmount += $unitPrice * $quantity;
+      $shoppingCartItems[] = $shoppingCartItem;
+      $cartAmount += $shoppingCartItem['unitPrice'] * $shoppingCartItem['quantity'];
     }
 
     if (!$shoppingCartItems || $cartAmount !== $expectedAmount) {
@@ -175,6 +167,38 @@ class CRM_Core_Payment_CmcicOrderContext {
     }
 
     return ['shoppingCartItems' => $shoppingCartItems];
+  }
+
+  /**
+   * Convert one CiviCRM line item to Monetico's gross unit-price format.
+   *
+   * CiviCRM stores line_total and tax_amount for the whole line. Monetico
+   * expects a unit price, so the gross line amount must be divided by the
+   * quantity only after tax has been included.
+   *
+   * @param array $lineItem
+   *
+   * @return array|null
+   */
+  private static function buildShoppingCartItem($lineItem) {
+    $quantity = self::toQuantity($lineItem['qty'] ?? NULL);
+    $lineTotal = self::toMinorUnits($lineItem['line_total'] ?? NULL);
+    $taxAmount = self::toMinorUnits($lineItem['tax_amount'] ?? 0);
+    $name = self::getLineItemName($lineItem);
+    if ($quantity === NULL || $lineTotal === NULL || $taxAmount === NULL || !$name) {
+      return NULL;
+    }
+
+    $grossLineAmount = $lineTotal + $taxAmount;
+    if ($grossLineAmount < 0 || $grossLineAmount % $quantity !== 0) {
+      return NULL;
+    }
+
+    return [
+      'name' => $name,
+      'unitPrice' => intdiv($grossLineAmount, $quantity),
+      'quantity' => $quantity,
+    ];
   }
 
   /**
