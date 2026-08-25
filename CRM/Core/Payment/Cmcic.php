@@ -117,19 +117,20 @@ class CRM_Core_Payment_Cmcic extends CRM_Core_Payment{
 
     $relayUrl = $this->prepareCheckout($params, $returnOKURL, $cancelURL, $merchantRef);
 
-    if (self::isDrupalWebformAjaxRequest() && class_exists('\\Drupal\\webform\\Ajax\\WebformRefreshCommand')) {
-      $webformRedirect = new \Drupal\webform\Ajax\WebformRefreshCommand($relayUrl);
-      CRM_Core_Page_AJAX::returnJsonResponse(array(
-        $webformRedirect->render(),
-      ));
-      exit;
-    }
-
     if (self::isDrupalAjaxRequest()) {
+      if (class_exists('\\Drupal\\webform\\Ajax\\WebformRefreshCommand')) {
+        $command = (new \Drupal\webform\Ajax\WebformRefreshCommand($relayUrl))->render();
+        $command['paymentRedirect'] = TRUE;
+        $command['paymentProvider'] = 'monetico';
+        CRM_Core_Page_AJAX::returnJsonResponse([$command]);
+      }
+
       $commands = [
         [
           'command' => 'cmcicRedirect',
           'url' => $relayUrl,
+          'paymentRedirect' => TRUE,
+          'paymentProvider' => 'monetico',
         ],
       ];
       CRM_Utils_JSON::output($commands);

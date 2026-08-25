@@ -32,6 +32,12 @@ Then in CiviCRM, configure the Payment Processor:
 
 Note that the TPE key/sha1/site code are identical for the dev and production configurations. Only the URL differs.
 
+Drupal Webform redirects use Webform's native `WebformRefreshCommand`. The
+response includes payment-provider metadata so an optional Drupal module can
+add a waiting state and user-activated fallback link without becoming a
+requirement of this extension. A bundled command remains available for legacy
+Webform versions that do not provide the native command.
+
 ### Experimental Hosted Fields checkout
 
 Monetico Hosted Fields can be selected for every supported CiviCRM payment
