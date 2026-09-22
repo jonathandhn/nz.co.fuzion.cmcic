@@ -59,10 +59,10 @@ function cmcic_register_afform_checkout_options($event) {
   $processors = Civi\Api4\PaymentProcessor::get(FALSE)
     ->addWhere('class_name', '=', 'Payment_Cmcic')
     ->addWhere('is_active', '=', TRUE)
-    ->addWhere('is_test', 'IN', array(TRUE, FALSE))
+    ->addWhere('is_test', 'IN', [TRUE, FALSE])
     ->execute();
 
-  $pairs = array();
+  $pairs = [];
   foreach ($processors as $processor) {
     $pairs[$processor['name']][$processor['is_test'] ? 'test' : 'live'] = $processor;
   }

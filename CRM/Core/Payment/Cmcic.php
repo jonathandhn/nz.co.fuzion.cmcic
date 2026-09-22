@@ -54,7 +54,7 @@ class CRM_Core_Payment_Cmcic extends CRM_Core_Payment{
   function checkConfig() {
     $config = CRM_Core_Config::singleton();
 
-    $error = array();
+    $error = [];
 
     if (empty($this->_paymentProcessor['user_name'])) {
       $error[] = ts('POS terminal number is not set in the Administer &raquo; System Settings &raquo; Payment Processors');
@@ -93,9 +93,9 @@ class CRM_Core_Payment_Cmcic extends CRM_Core_Payment{
     $this->_component = strtolower($component);
     $contributionID = !empty($params['contributionID']) ? $params['contributionID'] : (!empty($params['contribution_id']) ? $params['contribution_id'] : NULL);
     if (!$contributionID) {
-      Civi::log()->error('Cannot start Monetico checkout without a contribution ID.', array(
+      Civi::log()->error('Cannot start Monetico checkout without a contribution ID.', [
         'parameter_keys' => array_keys($params),
-      ));
+      ]);
       throw new CRM_Core_Exception(ts('Unable to prepare the payment reference.'));
     }
 
@@ -118,12 +118,12 @@ class CRM_Core_Payment_Cmcic extends CRM_Core_Payment{
     $relayUrl = $this->prepareHostedCheckout($params, $returnOKURL, $cancelURL, $merchantRef);
 
     if (self::isDrupalAjaxRequest()) {
-      $commands = array(
-        array(
+      $commands = [
+        [
           'command' => 'cmcicRedirect',
           'url' => $relayUrl,
-        ),
-      );
+        ],
+      ];
       CRM_Utils_JSON::output($commands);
     }
 
@@ -155,7 +155,7 @@ class CRM_Core_Payment_Cmcic extends CRM_Core_Payment{
       throw new CRM_Core_Exception(ts('Unable to prepare the payment reference.'));
     }
 
-    $emailFields  = array('email', 'email-Primary', 'email-5');
+    $emailFields  = ['email', 'email-Primary', 'email-5'];
     $email = '';
     foreach ($emailFields as $emailField) {
       if(!empty($params[$emailField])) {
@@ -167,7 +167,7 @@ class CRM_Core_Payment_Cmcic extends CRM_Core_Payment{
     $cleanAmount = CRM_Utils_Rule::cleanMoney($params['amount'] ?? 0);
     $formattedAmount = number_format((float) $cleanAmount, 2, '.', '');
 
-    $paymentParams = array(
+    $paymentParams = [
       'TPE' => $this->_paymentProcessor['user_name'],
       'contexte_commande' => CRM_Core_Payment_CmcicOrderContext::buildFromPaymentParams($params),
       'date' => date("d/m/Y:H:i:s"),
@@ -180,7 +180,7 @@ class CRM_Core_Payment_Cmcic extends CRM_Core_Payment{
       'url_retour_ok' => $returnOKURL,
       'url_retour_err' => $cancelURL,
       'version' => '3.0',
-    );
+    ];
 
     // Allow further manipulation of params via custom hooks
     CRM_Utils_Hook::alterPaymentProcessorParams($this, $params, $paymentParams);
@@ -190,11 +190,11 @@ class CRM_Core_Payment_Cmcic extends CRM_Core_Payment{
       $this->getAlgorithm()
     );
 
-    CRM_Core_Session::singleton()->set('checkout', array(
+    CRM_Core_Session::singleton()->set('checkout', [
       'fields' => $paymentParams,
       'url' => $this->_paymentProcessor['url_site'],
-    ), 'cmcic');
-    return CRM_Utils_System::url('civicrm/cmcic', array('reset' => 1));
+    ], 'cmcic');
+    return CRM_Utils_System::url('civicrm/cmcic', ['reset' => 1]);
   }
 
   /**
@@ -223,12 +223,12 @@ class CRM_Core_Payment_Cmcic extends CRM_Core_Payment{
       ->execute()
       ->single();
 
-    $params = array(
+    $params = [
       'contributionID' => $contributionID,
       'contactID' => $contribution['contact_id'],
       'amount' => $contribution['total_amount'],
       'currencyID' => $contribution['currency'],
-    );
+    ];
     $merchantRef = $params['contactID'] . '-' . $contributionID;
 
     return $this->prepareHostedCheckout(
@@ -270,14 +270,14 @@ class CRM_Core_Payment_Cmcic extends CRM_Core_Payment{
     }
 
     $paymentStatus = CRM_Core_Payment_CmcicPaymentStatus::query(
-      array(
+      [
         'version' => '2.0',
         'TPE' => $this->_paymentProcessor['user_name'],
         'date' => date('d/m/Y', $orderDate),
         'montant' => number_format((float) CRM_Utils_Rule::cleanMoney($contribution['total_amount']), 2, '.', '') . $contribution['currency'],
         'reference' => (string) $contributionID,
         'societe' => $this->_paymentProcessor['signature'],
-      ),
+      ],
       $this->getKey(),
       $this->getAlgorithm(),
       CRM_Core_Payment_CmcicPaymentStatus::getEndpoint($this->_mode === 'test')
@@ -289,11 +289,11 @@ class CRM_Core_Payment_Cmcic extends CRM_Core_Payment{
       if ($this->_mode === 'test') {
         $trxnId = 'test' . $contributionID . uniqid();
       }
-      civicrm_api3('contribution', 'completetransaction', array(
+      civicrm_api3('contribution', 'completetransaction', [
         'id' => $contributionID,
         'trxn_id' => $trxnId,
         'payment_processor_id' => $this->_paymentProcessor['id'],
-      ));
+      ]);
     }
     elseif ($checkoutStatus === 'cancel' || $checkoutStatus === 'fail') {
       $this->setHostedCheckoutContributionStatus(
@@ -385,7 +385,7 @@ class CRM_Core_Payment_Cmcic extends CRM_Core_Payment{
   function getLanguage() {
     global $tsLocale;
     $lang = substr($tsLocale, 0, 2);
-    $validLangs = array('fr', 'en', 'de', 'it', 'es', 'nl', 'pt', 'sv');
+    $validLangs = ['fr', 'en', 'de', 'it', 'es', 'nl', 'pt', 'sv'];
     if(in_array($lang, $validLangs)) {
       return strtoupper($lang);
     }
@@ -412,7 +412,7 @@ class CRM_Core_Payment_Cmcic extends CRM_Core_Payment{
   public function handlePaymentNotification(): void {
     // Prefer official Monetico HTTP POST notifications, falling back to $_GET only for manual replay
     $inputData = !empty($_POST) ? $_POST : $_GET;
-    $ipn = new CRM_Core_Payment_CmcicIPN(array_merge($inputData, array('exit_mode' => TRUE)));
+    $ipn = new CRM_Core_Payment_CmcicIPN(array_merge($inputData, ['exit_mode' => TRUE]));
     $ipn->main($this->_paymentProcessor);
 
     // If for any reason we come back here
@@ -507,14 +507,14 @@ class CRM_Core_Payment_Cmcic extends CRM_Core_Payment{
 
     // Query Monetico EtatPaiement to verify bank-side status and already recredited amounts
     $statusResult = CRM_Core_Payment_CmcicPaymentStatus::query(
-      array(
+      [
         'version' => '2.0',
         'TPE' => (string) $processor->_paymentProcessor['user_name'],
         'date' => date('d/m/Y', $receiveDate ?: time()),
         'montant' => number_format($totalAmount, 2, '.', '') . $orderCurrency,
         'reference' => (string) $contributionID,
         'societe' => (string) $processor->_paymentProcessor['signature'],
-      ),
+      ],
       $processor->getKey(),
       $processor->getAlgorithm(),
       $statusEndpoint
@@ -571,11 +571,11 @@ class CRM_Core_Payment_Cmcic extends CRM_Core_Payment{
       $refundResult['refund_trxn_id']
     ));
 
-    return array(
+    return [
       'refund_trxn_id' => $refundResult['refund_trxn_id'],
       'refund_status' => 'Completed',
       'fee_amount' => 0,
-    );
+    ];
   }
 
   /**
@@ -607,7 +607,7 @@ class CRM_Core_Payment_Cmcic extends CRM_Core_Payment{
     $formattedRefund = number_format($refundAmount, 2, '.', '');
     $formattedPossible = number_format($soldeRemboursable, 2, '.', '');
 
-    $fields = array(
+    $fields = [
       'version' => '3.0',
       'TPE' => (string) $this->_paymentProcessor['user_name'],
       'date' => date('d/m/Y:H:i:s'),
@@ -618,7 +618,7 @@ class CRM_Core_Payment_Cmcic extends CRM_Core_Payment{
       'reference' => (string) $contributionID,
       'lgue' => 'FR',
       'societe' => (string) $this->_paymentProcessor['signature'],
-    );
+    ];
 
     $fields['MAC'] = CRM_Core_Payment_CmcicHmac::calculate(
       $fields,
@@ -630,28 +630,28 @@ class CRM_Core_Payment_Cmcic extends CRM_Core_Payment{
       ? 'https://payment-api.e-i.com/test/recredit_paiement.cgi'
       : 'https://payment-api.e-i.com/recredit_paiement.cgi';
 
-    $httpClient = new \GuzzleHttp\Client(array(
+    $httpClient = new \GuzzleHttp\Client([
       'connect_timeout' => 5,
       'timeout' => 15,
       'verify' => TRUE,
-    ));
+    ]);
 
     try {
-      $response = $httpClient->post($baseUrl, array(
+      $response = $httpClient->post($baseUrl, [
         'form_params' => $fields,
-        'headers' => array(
+        'headers' => [
           'Content-Type' => 'application/x-www-form-urlencoded',
           'Accept' => 'text/plain',
-        ),
+        ],
         'http_errors' => FALSE,
-      ));
+      ]);
       $body = (string) $response->getBody();
     }
     catch (\Throwable $e) {
       throw new CRM_Core_Exception('Monetico recredit HTTP request failed: ' . $e->getMessage());
     }
 
-    $parsed = array();
+    $parsed = [];
     $lines = explode("\n", str_replace("\r", "", $body));
     foreach ($lines as $line) {
       if (str_contains($line, '=')) {
@@ -662,21 +662,21 @@ class CRM_Core_Payment_Cmcic extends CRM_Core_Payment{
 
     $cdr = (string) ($parsed['cdr'] ?? '-1');
     if ($cdr !== '0') {
-      $errorDescriptions = array(
+      $errorDescriptions = [
         '-46' => 'La commande est déjà entièrement recréditée.',
         '-48' => 'Échec du recrédit (recrédit partiel non permis ou rejeté par la banque).',
         '-51' => 'Le recrédit global n\'est pas permis pour cette commande.',
         '-52' => 'Le montant déjà recrédité est incorrect.',
-      );
+      ];
       $errorMsg = $errorDescriptions[$cdr] ?? ("Code d'erreur Monetico: cdr=" . $cdr);
       throw new CRM_Core_Exception('Échec du remboursement Monetico: ' . $errorMsg);
     }
 
-    return array(
+    return [
       'cdr' => '0',
       'refund_trxn_id' => 'recredit-' . $contributionID . '-' . time(),
       'response' => $parsed,
-    );
+    ];
   }
 
   /**

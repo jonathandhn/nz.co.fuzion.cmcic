@@ -46,9 +46,9 @@ if (interface_exists('Civi\Checkout\CheckoutOptionInterface') && interface_exist
     }
 
     public function getAfformSettings(bool $testMode): array {
-      return array(
+      return [
         'description' => ts('You will be redirected to Monetico to complete your payment.'),
-      );
+      ];
     }
 
     public function getAfformModule(): ?string {

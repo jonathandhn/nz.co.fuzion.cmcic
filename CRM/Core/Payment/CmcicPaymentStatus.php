@@ -31,7 +31,7 @@ class CRM_Core_Payment_CmcicPaymentStatus {
     if ($state === 'AN') {
       return 'cancel';
     }
-    if (in_array($state, array('RE', 'GR', 'AP'), TRUE)) {
+    if (in_array($state, ['RE', 'GR', 'AP'], TRUE)) {
       return 'fail';
     }
     return 'pending';
@@ -49,7 +49,7 @@ class CRM_Core_Payment_CmcicPaymentStatus {
    * @return array
    */
   public static function query($fields, $key, $algorithm, $endpoint, $httpClient = NULL) {
-    $required = array('version', 'TPE', 'date', 'montant', 'reference', 'societe');
+    $required = ['version', 'TPE', 'date', 'montant', 'reference', 'societe'];
     foreach ($required as $field) {
       if (empty($fields[$field])) {
         throw new CRM_Core_Exception('Missing required Monetico payment status field: ' . $field);
@@ -61,16 +61,16 @@ class CRM_Core_Payment_CmcicPaymentStatus {
       $body = $httpClient($endpoint, $fields);
     }
     else {
-      $client = new \GuzzleHttp\Client(array(
+      $client = new \GuzzleHttp\Client([
         'connect_timeout' => 2,
         'timeout' => 5,
         'verify' => TRUE,
-      ));
-      $response = $client->post($endpoint, array(
+      ]);
+      $response = $client->post($endpoint, [
         'form_params' => $fields,
-        'headers' => array('Accept' => 'application/xml'),
+        'headers' => ['Accept' => 'application/xml'],
         'http_errors' => FALSE,
-      ));
+      ]);
       if ($response->getStatusCode() !== 200) {
         throw new CRM_Core_Exception('Monetico payment status request failed with HTTP ' . $response->getStatusCode() . '.');
       }
@@ -97,13 +97,13 @@ class CRM_Core_Payment_CmcicPaymentStatus {
       $capturedAmount = (float) preg_replace('/[^0-9\.]/', '', (string) $xml->montantrecouvre);
     }
 
-    return array(
+    return [
       'state' => (string) $xml->etat,
       'authorization_number' => (string) ($xml->numauto ?? ''),
       'recredits_total' => $recreditsTotal,
       'captured_amount' => $capturedAmount,
       'raw_xml' => $xml,
-    );
+    ];
   }
 
 }

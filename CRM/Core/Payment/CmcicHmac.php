@@ -12,7 +12,7 @@ class CRM_Core_Payment_CmcicHmac {
    */
   public static function calculate(array $fields, string $key, string $algorithm = 'sha1'): string {
     ksort($fields, SORT_STRING);
-    $parts = array();
+    $parts = [];
     foreach ($fields as $name => $value) {
       $parts[] = $name . '=' . $value;
     }

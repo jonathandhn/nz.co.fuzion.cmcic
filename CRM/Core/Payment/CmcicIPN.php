@@ -9,13 +9,13 @@ class CRM_Core_Payment_CmcicIPN {
    * the code does not need to keep retrieving from the http request
    * @var array
    */
-  protected $_inputParameters = array();
+  protected $_inputParameters = [];
 
   /**
    * store for the variables from the invoice string
    * @var array
   */
-  protected $_invoiceData = array();
+  protected $_invoiceData = [];
 
   protected $_exitMode = FALSE;
   /**
@@ -87,13 +87,13 @@ class CRM_Core_Payment_CmcicIPN {
       return TRUE;
     }
 
-    $legacyFields = array();
-    $legacyNames = array(
+    $legacyFields = [];
+    $legacyNames = [
       'TPE', 'date', 'montant', 'reference', 'texte-libre', 'version',
       'code-retour', 'cvx', 'vld', 'brand', 'status3ds', 'numauto',
       'motifrefus', 'originecb', 'bincb', 'hpancb', 'ipclient', 'originetr',
       'veres', 'pares',
-    );
+    ];
     foreach ($legacyNames as $name) {
       $legacyFields[$name] = isset($this->_inputParameters[$name]) ? $this->_inputParameters[$name] : '';
     }
@@ -146,7 +146,7 @@ class CRM_Core_Payment_CmcicIPN {
 
     //since we have done MAC validation we can assume it is all good & just use the api to complete
     // based on the contribution id
-    $successfulResults = array('payetest', 'paiement');
+    $successfulResults = ['payetest', 'paiement'];
     $resultCode = (string) $this->retrieve('code-retour', 'String');
     $contributionID = (int) $this->retrieve('reference', 'Integer');
     $numauto = (string) $this->retrieve('numauto', 'String', FALSE);
@@ -226,11 +226,11 @@ class CRM_Core_Payment_CmcicIPN {
       if ($resultCode === 'payetest') {
         $trxn_id = 'test' . $contributionID . uniqid();
       }
-      civicrm_api3('contribution', 'completetransaction', array(
+      civicrm_api3('contribution', 'completetransaction', [
         'id' => $contributionID,
         'trxn_id' => $trxn_id,
         'payment_processor_id' => $paymentProcessor['id'],
-      ));
+      ]);
       $this->cmcic_receipt_exit(TRUE);
     }
     elseif ($resultCode === 'Annulation') {
@@ -262,7 +262,7 @@ class CRM_Core_Payment_CmcicIPN {
    * Check if ISO currency code is a zero-decimal currency (JPY, KRW, VND, etc.).
    */
   protected function isZeroDecimalCurrency(string $currency): bool {
-    $zeroDecimalCurrencies = array('JPY', 'KRW', 'CLP', 'PYG', 'UGX', 'VND', 'BIF', 'DJF', 'GNF', 'KMF', 'MGA', 'RWF', 'VUV', 'XAF', 'XOF', 'XPF');
+    $zeroDecimalCurrencies = ['JPY', 'KRW', 'CLP', 'PYG', 'UGX', 'VND', 'BIF', 'DJF', 'GNF', 'KMF', 'MGA', 'RWF', 'VUV', 'XAF', 'XOF', 'XPF'];
     return in_array(strtoupper($currency), $zeroDecimalCurrencies, TRUE);
   }
 

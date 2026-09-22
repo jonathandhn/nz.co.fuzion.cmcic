@@ -73,7 +73,7 @@ class Reconcile extends AbstractAction {
     elseif ($bankState === 'PA' && $capturedAmount <= 0.0) {
       $actionTaken = 'uncaptured_payment_requires_attention';
     }
-    elseif (in_array($bankState, array('AN', 'RE', 'GR', 'AP'), TRUE) && $currentStatus === 'Pending') {
+    elseif (in_array($bankState, ['AN', 'RE', 'GR', 'AP'], TRUE) && $currentStatus === 'Pending') {
       $newStatus = $bankState === 'AN' ? 'Cancelled' : 'Failed';
       $actionTaken = 'marked_failed_or_cancelled';
     }
@@ -169,14 +169,14 @@ class Reconcile extends AbstractAction {
 
     $endpoint = CRM_Core_Payment_CmcicPaymentStatus::getEndpoint($isTest);
     $statusResult = CRM_Core_Payment_CmcicPaymentStatus::query(
-      array(
+      [
         'version' => '2.0',
         'TPE' => (string) $processor->getPaymentProcessor()['user_name'],
         'date' => date('d/m/Y', $receiveDate ?: time()),
         'montant' => number_format($totalAmount, 2, '.', '') . $currency,
         'reference' => (string) $contributionId,
         'societe' => (string) $processor->getPaymentProcessor()['signature'],
-      ),
+      ],
       $processor->getKey(),
       $processor->getAlgorithm(),
       $endpoint
@@ -203,11 +203,11 @@ class Reconcile extends AbstractAction {
     if (!$this->dryRun && $actionTaken !== 'none' && !str_ends_with($actionTaken, '_requires_attention')) {
       if ($actionTaken === 'completed_transaction') {
         $trxnId = $contributionId . '-' . ($statusResult['authorization_number'] ?: 'status');
-        civicrm_api3('contribution', 'completetransaction', array(
+        civicrm_api3('contribution', 'completetransaction', [
           'id' => $contributionId,
           'trxn_id' => $trxnId,
           'payment_processor_id' => $processorId,
-        ));
+        ]);
       }
       elseif ($actionTaken === 'marked_refunded') {
         $refundTrxnId = 'REFUND-' . $contributionId;
