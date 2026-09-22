@@ -8,7 +8,7 @@ class CRM_Cmcic_Page_Cmcic extends CRM_Core_Page{
     }
 
     CRM_Core_Session::singleton()->set('checkout', NULL, 'cmcic');
-    $fields = array();
+    $fields = [];
     foreach ($checkout['fields'] as $name => $value) {
       $fields[htmlspecialchars($name, ENT_QUOTES, 'UTF-8')] = htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
     }
