@@ -55,4 +55,33 @@ final class CmcicOrderContextTest extends TestCase {
     $decoded = json_decode(base64_decode($context), TRUE, 512, JSON_THROW_ON_ERROR);
     self::assertArrayNotHasKey('phone', $decoded['billing']);
   }
+
+  public function testBuildsGrossUnitPriceFromLineLevelTax(): void {
+    self::assertSame([
+      'name' => 'Two tickets',
+      'unitPrice' => 6000,
+      'quantity' => 2,
+    ], $this->buildShoppingCartItem([
+      'label' => 'Two tickets',
+      'qty' => 2,
+      'unit_price' => 50.00,
+      'line_total' => 100.00,
+      'tax_amount' => 20.00,
+    ]));
+  }
+
+  public function testRejectsGrossLineAmountThatCannotBeSplitIntoExactMinorUnits(): void {
+    self::assertNull($this->buildShoppingCartItem([
+      'label' => 'Two tickets',
+      'qty' => 2,
+      'unit_price' => 0.02,
+      'line_total' => 0.04,
+      'tax_amount' => 0.01,
+    ]));
+  }
+
+  private function buildShoppingCartItem(array $lineItem): ?array {
+    $method = new ReflectionMethod(CRM_Core_Payment_CmcicOrderContext::class, 'buildShoppingCartItem');
+    return $method->invoke(NULL, $lineItem);
+  }
 }

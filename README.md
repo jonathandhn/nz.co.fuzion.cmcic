@@ -6,8 +6,8 @@ Distributed under the terms of the GNU Affero General public license (AGPL 3). S
 
 ## Requirements
 
-* **CiviCRM**: `6.10+` (Tested up to CiviCRM `6.17.0`)
-* **PHP**: `8.1+` (compatible with PHP 8.1, 8.2, 8.3, 8.4, 8.5)
+* **CiviCRM**: `6.16+` (Tested up to CiviCRM `6.18.0`)
+* **PHP**: `8.2+` (compatible with PHP 8.2, 8.3, 8.4, 8.5)
 
 ## Configuration
 
@@ -31,6 +31,40 @@ Then in CiviCRM, configure the Payment Processor:
   * **Site URL for tests**: `https://p.monetico-services.com/test/paiement.cgi`
 
 Note that the TPE key/sha1/site code are identical for the dev and production configurations. Only the URL differs.
+
+Drupal Webform redirects use Webform's native `WebformRefreshCommand`. The
+response includes payment-provider metadata so an optional Drupal module can
+add a waiting state and user-activated fallback link without becoming a
+requirement of this extension. A bundled command remains available for legacy
+Webform versions that do not provide the native command.
+
+### Experimental Hosted Fields checkout
+
+Monetico Hosted Fields can be selected for every supported CiviCRM payment
+entry point (contribution/event QuickForm, Drupal Webform and Afform Checkout):
+
+```bash
+cv api4 Setting.set '{"values":{"cmcic_checkout_mode":"hosted_fields"}}'
+cv flush
+```
+
+Return to the existing hosted payment page with:
+
+```bash
+cv api4 Setting.set '{"values":{"cmcic_checkout_mode":"hosted_page"}}'
+cv flush
+```
+
+The TPE must have Monetico's tokenisation / Hosted Fields capability enabled.
+The flow signs the token and PaymentService requests server-side, persists the
+short-lived attempt independently from the browser cookie, and handles the
+3-D Secure technical and cardholder-authentication steps before completing the
+CiviCRM contribution.
+
+For a first sandbox test, use an accepted test card such as
+`0000010000000021` (Visa without 3-D Secure enrolment), an expiry date in the
+future and a three-digit CVX. The sandbox `...0023` card exercises the
+frictionless 3-D Secure path and `...0025` exercises the challenge path.
 
 ## Server notification URL ("interface Retour" / CGI2)
 

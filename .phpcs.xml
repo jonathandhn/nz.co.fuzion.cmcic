@@ -20,5 +20,12 @@
         <exclude name="PSR2.Classes.PropertyDeclaration.Underscore"/>
         <!-- Allow CiviCRM hook/callback snake_case method names -->
         <exclude name="PSR1.Methods.CamelCapsMethodName.NotCamelCaps"/>
+        <!-- CiviCRM API4 actions require the protected _run() method name. -->
+        <exclude name="PSR2.Methods.MethodDeclaration.Underscore"/>
+    </rule>
+
+    <!-- CiviCRM extension entry points combine Civix bootstrap side effects and hook declarations. -->
+    <rule ref="PSR1.Files.SideEffects.FoundWithSymbols">
+        <exclude-pattern>cmcic.php</exclude-pattern>
     </rule>
 </ruleset>
