@@ -19,8 +19,8 @@
     "rector/rector": "^2"
   },
   "scripts": {
-    "cs-check": "phpcs --standard=.phpcs.xml CRM/ cmcic.php",
-    "cs-fix": "phpcbf --standard=.phpcs.xml CRM/ cmcic.php",
+    "cs-check": "phpcs --standard=.phpcs.xml CRM/ Civi/ cmcic.php",
+    "cs-fix": "phpcbf --standard=.phpcs.xml CRM/ Civi/ cmcic.php",
     "phpunit": "CMCIC_UNIT_ONLY=1 phpunit -c phpunit.xml.dist --no-coverage --display-phpunit-deprecations",
     "phpunit:integration": "phpunit -c phpunit.xml.dist --no-coverage --display-phpunit-deprecations",
     "test": "@phpunit"
