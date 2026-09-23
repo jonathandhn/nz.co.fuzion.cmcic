@@ -23,7 +23,7 @@ function cmcic_civicrm_config(&$config)
  */
 function cmcic_supports_afform_checkout(): bool
 {
-    return version_compare(CRM_Utils_System::version(), '6.14', '>=')
+    return version_compare(CRM_Utils_System::version(), '6.16', '>=')
     && interface_exists('Civi\Checkout\CheckoutOptionInterface')
     && interface_exists('Civi\Checkout\AfformCheckoutOptionInterface')
     && class_exists('Civi\Checkout\CheckoutSession')

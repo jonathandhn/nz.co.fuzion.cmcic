@@ -2,7 +2,7 @@
 <extension key="nz.co.fuzion.cmcic" type="module">
   <file>cmcic</file>
   <name>Monetico Online Payment processor</name>
-  <description>Payment processor for Monetico Online (Crédit Mutuel / CIC)</description>
+  <description>Payment processor for Monetico Online (Cr&#xE9;dit Mutuel / CIC)</description>
   <license>AGPL</license>
   <maintainer>
     <author>Eileen</author>
@@ -12,14 +12,13 @@
     <author>Jonathan Dahan</author>
     <email>jonathan@dhn.one</email>
   </maintainer>
-  <releaseDate>2026-08-06</releaseDate>
-  <version>1.6</version>
+  <releaseDate>2026-09-24</releaseDate>
+  <version>1.7</version>
   <develStage>stable</develStage>
   <compatibility>
-    <ver>6.10</ver>
+    <ver>6.16</ver>
   </compatibility>
   <php_compatibility>
-    <ver>8.1</ver>
     <ver>8.2</ver>
     <ver>8.3</ver>
     <ver>8.4</ver>
@@ -28,7 +27,7 @@
   <smarty_compatibility>
     <ver>5</ver>
   </smarty_compatibility>
-  <comments>Monetico Online Payment processor (Crédit Mutuel / CIC). You need to configure the CGI2 return URL with your bank to
+  <comments>Monetico Online Payment processor (Cr&#xE9;dit Mutuel / CIC). You need to configure the CGI2 return URL with your bank to
   https://yoursite/civicrm/payment/ipn/{processor_id}
   where {processor_id} is your CiviCRM gateway payment processor ID.
   </comments>

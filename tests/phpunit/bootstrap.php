@@ -28,7 +28,7 @@ namespace {
   }
   if (!class_exists('CRM_Utils_System')) {
     class CRM_Utils_System {
-      public static function version() { return '6.14.0'; }
+      public static function version() { return '6.16.0'; }
     }
   }
   if (!function_exists('ts')) {

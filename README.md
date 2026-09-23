@@ -6,8 +6,8 @@ Distributed under the terms of the GNU Affero General public license (AGPL 3). S
 
 ## Requirements
 
-* **CiviCRM**: `6.10+` (Tested up to CiviCRM `6.17.0`)
-* **PHP**: `8.1+` (compatible with PHP 8.1, 8.2, 8.3, 8.4, 8.5)
+* **CiviCRM**: `6.16+` (Tested up to CiviCRM `6.18.0`)
+* **PHP**: `8.2+` (compatible with PHP 8.2, 8.3, 8.4, 8.5)
 
 ## Configuration
 
