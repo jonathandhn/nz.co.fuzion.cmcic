@@ -86,10 +86,10 @@ function cmcic_register_afform_checkout_options($event) {
 function cmcic_civicrm_buildForm($formName, &$form) {
   if (class_exists('CRM_Core_Resources')) {
     if (class_exists('CRM_Core_Region')) {
-      CRM_Core_Region::instance('billing-block')->add(array(
+      CRM_Core_Region::instance('billing-block')->add([
         'scriptUrl' => CRM_Core_Resources::singleton()->getUrl('nz.co.fuzion.cmcic', 'js/civicrmCmcic.js'),
         'weight' => 90,
-      ));
+      ]);
     }
     else {
       CRM_Core_Resources::singleton()->addScriptFile('nz.co.fuzion.cmcic', 'js/civicrmCmcic.js');
@@ -116,7 +116,7 @@ function cmcic_civicrm_check(&$messages, $statusNames = [], $includeDisabled = F
       ->addWhere('is_active', '=', TRUE)
       ->execute();
   }
-  catch (\Throwable $e) {
+  catch (\Throwable) {
     return;
   }
 

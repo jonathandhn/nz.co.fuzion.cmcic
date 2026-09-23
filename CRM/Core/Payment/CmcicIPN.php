@@ -264,7 +264,7 @@ class CRM_Core_Payment_CmcicIPN {
    * Accept only result codes documented for the immediate-payment flow.
    */
   protected function isKnownResultCode($resultCode) {
-    return in_array($resultCode, array('payetest', 'paiement', 'Annulation', 'attente_partenaire'), TRUE);
+    return in_array($resultCode, ['payetest', 'paiement', 'Annulation', 'attente_partenaire'], TRUE);
   }
 
   /**

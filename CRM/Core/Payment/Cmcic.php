@@ -177,7 +177,7 @@ class CRM_Core_Payment_Cmcic extends CRM_Core_Payment{
     }
 
     $email = '';
-    foreach (array('email', 'email-Primary', 'email-5') as $emailField) {
+    foreach (['email', 'email-Primary', 'email-5'] as $emailField) {
       if (!empty($params[$emailField])) {
         $email = (string) $params[$emailField];
         break;
@@ -199,11 +199,11 @@ class CRM_Core_Payment_Cmcic extends CRM_Core_Payment{
 
     $attemptId = bin2hex(random_bytes(16));
     $expires = time() + 3600;
-    $signedParams = array(
+    $signedParams = [
       'attempt_id' => $attemptId,
       'expires' => $expires,
       'processor_id' => (int) $this->_paymentProcessor['id'],
-    );
+    ];
     $signer = new CRM_Utils_Signer(self::getHostedFieldsSigningKey(), array_keys($signedParams));
     $signedParams['_sgn'] = $signer->sign($signedParams);
     $hostedFieldsUrl = CRM_Utils_System::url(
@@ -215,7 +215,7 @@ class CRM_Core_Payment_Cmcic extends CRM_Core_Payment{
       TRUE
     );
     $token = CRM_Core_Payment_CmcicHostedFieldsClient::initializePaymentMean($this);
-    CRM_Cmcic_HostedFieldsStore::set($attemptId, array(
+    CRM_Cmcic_HostedFieldsStore::set($attemptId, [
       'amount_minor' => (int) round((float) CRM_Utils_Rule::cleanMoney($params['amount'] ?? 0) * 100),
       'cancel_url' => $cancelURL,
       'context' => $context,
@@ -228,7 +228,7 @@ class CRM_Core_Payment_Cmcic extends CRM_Core_Payment{
       'point_of_sale' => (string) $this->_paymentProcessor['user_name'],
       'processor_id' => (int) $this->_paymentProcessor['id'],
       'return_url' => $returnOKURL,
-    ));
+    ]);
 
     \Civi\Api4\Contribution::update(FALSE)
       ->addWhere('id', '=', (int) $contributionID)
@@ -703,7 +703,7 @@ class CRM_Core_Payment_Cmcic extends CRM_Core_Payment{
     }
 
     $capture = $processor->findRefundCapture(
-      $statusResult['captures'] ?? array(),
+      $statusResult['captures'] ?? [],
       $requestedRefundAmount,
       $soldeRemboursable
     );
@@ -817,7 +817,7 @@ class CRM_Core_Payment_Cmcic extends CRM_Core_Payment{
     $lines = explode("\n", str_replace("\r", "", $body));
     foreach ($lines as $line) {
       if (str_contains($line, '=')) {
-        list($k, $v) = explode('=', trim($line), 2);
+        [$k, $v] = explode('=', trim($line), 2);
         $parsed[trim($k)] = trim($v);
       }
     }

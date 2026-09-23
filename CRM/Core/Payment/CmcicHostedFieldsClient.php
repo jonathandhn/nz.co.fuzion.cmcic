@@ -163,7 +163,7 @@ final class CRM_Core_Payment_CmcicHostedFieldsClient
         $responseBody = (string) $response->getBody();
         try {
             $result = json_decode($responseBody, true, 512, JSON_THROW_ON_ERROR);
-        } catch (JsonException $e) {
+        } catch (JsonException) {
             throw new CRM_Core_Exception(sprintf(
                 'Monetico Hosted Fields returned invalid JSON (HTTP %d).',
                 $response->getStatusCode()

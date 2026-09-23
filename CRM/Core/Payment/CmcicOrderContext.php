@@ -146,7 +146,7 @@ class CRM_Core_Payment_CmcicOrderContext {
         ->addWhere('contribution_id', '=', $contributionId)
         ->execute();
     }
-    catch (\Throwable $e) {
+    catch (\Throwable) {
       return NULL;
     }
 

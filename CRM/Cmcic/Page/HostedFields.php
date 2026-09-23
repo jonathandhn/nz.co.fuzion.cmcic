@@ -85,7 +85,7 @@ class CRM_Cmcic_Page_HostedFields extends CRM_Core_Page
                 16,
                 JSON_THROW_ON_ERROR
             );
-        } catch (JsonException $e) {
+        } catch (JsonException) {
             throw new CRM_Core_Exception(ts('The browser information required for 3-D Secure is invalid.'));
         }
         if (!is_array($provided)) {
